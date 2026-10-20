@@ -1,0 +1,73 @@
+# ---------------------------------------------------------------
+# Guardrails policy for the Acme support bot.
+# Edit this file to change behavior. No code changes or redeploys
+# needed: the gateway picks up saves automatically, and keeps the
+# old version running if your edit has a mistake.
+# ---------------------------------------------------------------
+version: 1
+name: acme-support-bot
+
+system_prompt: >
+  You are Acme's customer support assistant. Answer questions about
+  billing and accounts only.
+
+# --- What users may send us -------------------------------------
+input:
+  max_chars: 4000
+  injection:
+    enabled: true
+    threshold: 0.6        # lower = stricter (more false positives)
+  pii:
+    enabled: true
+    action: block         # block | redact
+    detect: [credit_card, ssn, email, phone, api_key]
+
+# --- What the model may say back --------------------------------
+output:
+  format: json            # text | json
+  schema:
+    type: object
+    required: [answer, sources, confidence]
+    additionalProperties: false
+    properties:
+      answer:     { type: string, minLength: 1 }
+      sources:    { type: array, minItems: 1, items: { type: string } }
+      confidence: { type: number, minimum: 0, maximum: 1 }
+  toxicity:
+    enabled: true
+    extra_patterns: []    # add your own regexes here
+  on_topic:
+    enabled: true
+    min_matches: 1
+    topics:
+      billing: [invoice, payment, refund, subscription, billing, charge, plan]
+      account: [account, password, login, profile, settings]
+  block_pii_leak: true
+
+# --- Plain-language business rules ------------------------------
+# type: forbidden_terms | require_pattern | blocked_topic
+# applies_to: input | output | both
+rules:
+  - id: no-competitors
+    description: Never discuss competitors.
+    type: forbidden_terms
+    terms: [Globex, Initech, Umbrella Corp]
+    message: Do not mention or compare against competitors.
+
+  - id: cite-sources
+    description: Always cite sources with a link.
+    type: require_pattern
+    pattern: "https?://"
+    message: Include at least one source URL.
+
+  - id: no-medical-advice
+    description: Never give medical advice.
+    type: blocked_topic
+    topic: medical_advice        # also available: legal_advice, financial_advice
+    message: Do not give medical advice. Say you can only help with billing and accounts.
+
+# --- When something goes wrong ----------------------------------
+on_fail:
+  max_retries: 2
+  fallback_message: "Sorry, I can't help with that. Please contact support@acme.example."
+  blocked_input_message: "I can't process that message. Please rephrase it without sensitive details and try again."

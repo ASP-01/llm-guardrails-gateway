@@ -1,0 +1,8 @@
+fastapi>=0.110
+uvicorn>=0.29
+pydantic>=2.5
+pyyaml>=6.0
+jsonschema>=4.20
+anthropic>=0.40      # optional: only needed for the real Claude provider
+httpx>=0.27          # needed by FastAPI's TestClient
+pytest>=8.0
