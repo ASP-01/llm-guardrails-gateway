@@ -110,3 +110,72 @@ This is a solid, tested baseline, not a complete safety system.
   false-positive rate. Those are the numbers worth putting on a resume.
 - Add per-request latency and retry-rate metrics (Prometheus) to show guardrail overhead.
 - Per-tenant policies selected by API key.
+
+## Example responses
+
+These are real responses from `POST /v1/chat` using the offline demo model and the default policy.
+
+**Model breaks a rule, gateway retries.** The first answer mentioned a competitor, so it was rejected and the model was asked again. Attempt 2 passed.
+
+```bash
+curl -s localhost:8000/v1/chat -H 'content-type: application/json' \
+  -d '{"message": "Is your competitor cheaper?"}'
+```
+
+```json
+{
+  "status": "ok",
+  "attempts": [
+    {
+      "number": 1,
+      "violations": [
+        {
+          "rule_id": "no-competitors",
+          "category": "policy",
+          "stage": "output",
+          "message": "Do not mention or compare against competitors."
+        }
+      ]
+    },
+    { "number": 2, "violations": [] }
+  ],
+  "input_violations": [],
+  "redactions": []
+}
+```
+
+**Prompt injection is blocked before the model is called.** `attempts` is empty because the LLM was never reached.
+
+```json
+{
+  "status": "blocked_input",
+  "content": "I can't process that message. Please rephrase it without sensitive details and try again.",
+  "attempts": [],
+  "input_violations": [
+    {
+      "rule_id": "prompt-injection",
+      "category": "injection",
+      "stage": "input",
+      "message": "Possible prompt injection or jailbreak (score 0.98, signals: ignore-previous, reveal-system-prompt)"
+    }
+  ]
+}
+```
+
+**A pasted credit card number is blocked.**
+
+```json
+{
+  "status": "blocked_input",
+  "content": "I can't process that message. Please rephrase it without sensitive details and try again.",
+  "attempts": [],
+  "input_violations": [
+    {
+      "rule_id": "pii-in-input",
+      "category": "pii",
+      "stage": "input",
+      "message": "Message contains sensitive data (credit_card)"
+    }
+  ]
+}
+```
