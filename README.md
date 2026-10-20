@@ -1,5 +1,7 @@
 # LLM Guardrails Gateway
 
+![tests](https://github.com/ASP-01/llm-guardrails-gateway/actions/workflows/tests.yml/badge.svg)
+
 Middleware that sits between your users and any LLM. It checks what goes in, checks what
 comes out, retries with a correction when the model misbehaves, and returns a safe fallback
 when it can't be fixed. The rules live in a YAML file that non-engineers can edit.
